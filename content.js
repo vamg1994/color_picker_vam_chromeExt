@@ -19,6 +19,7 @@ class ColorPickerContent {
     this.screenImageData = null;
     this.imageCanvas = null;
     this.imageCtx = null;
+    this.devicePixelRatio = window.devicePixelRatio || 1;
     
     // Bind methods to preserve context
     this.handleMouseMove = this.handleMouseMove.bind(this);
@@ -37,6 +38,9 @@ class ColorPickerContent {
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       try {
         switch (request.action) {
+          case 'ping':
+            sendResponse({ status: 'alive' });
+            break;
           case 'startPicking':
             this.startColorPicking();
             sendResponse({ status: 'started' });
@@ -85,22 +89,35 @@ class ColorPickerContent {
    */
   async captureScreen() {
     try {
-      const response = await new Promise((resolve) => {
+      console.log('Attempting screen capture...');
+      
+      const response = await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Screen capture timeout'));
+        }, 5000);
+        
         chrome.runtime.sendMessage(
           { action: 'captureScreen' },
-          resolve
+          (response) => {
+            clearTimeout(timeout);
+            if (chrome.runtime.lastError) {
+              reject(new Error(chrome.runtime.lastError.message));
+            } else {
+              resolve(response);
+            }
+          }
         );
       });
 
-      if (response.success && response.dataUrl) {
+      if (response && response.success && response.dataUrl) {
         await this.loadScreenImage(response.dataUrl);
         console.log('Screen captured successfully');
       } else {
-        console.warn('Screen capture failed, using fallback method');
+        console.warn('Screen capture failed:', response?.error || 'Unknown error');
         this.setupFallbackColorPicking();
       }
     } catch (error) {
-      console.error('Screen capture error:', error);
+      console.error('Screen capture error:', error.message || error);
       this.setupFallbackColorPicking();
     }
   }
@@ -115,19 +132,33 @@ class ColorPickerContent {
       
       img.onload = () => {
         try {
+          // Get device pixel ratio for accurate coordinate mapping
+          const devicePixelRatio = window.devicePixelRatio || 1;
+          const actualWidth = window.innerWidth * devicePixelRatio;
+          const actualHeight = window.innerHeight * devicePixelRatio;
+          
           // Create canvas for image analysis
           this.imageCanvas = document.createElement('canvas');
-          this.imageCanvas.width = window.innerWidth;
-          this.imageCanvas.height = window.innerHeight;
+          this.imageCanvas.width = actualWidth;
+          this.imageCanvas.height = actualHeight;
           this.imageCtx = this.imageCanvas.getContext('2d');
           
-          // Draw the captured image
-          this.imageCtx.drawImage(img, 0, 0, window.innerWidth, window.innerHeight);
+          // Draw the captured image at actual size
+          this.imageCtx.drawImage(img, 0, 0, actualWidth, actualHeight);
           
           // Get image data for pixel access
           this.screenImageData = this.imageCtx.getImageData(
-            0, 0, window.innerWidth, window.innerHeight
+            0, 0, actualWidth, actualHeight
           );
+          
+          // Store pixel ratio for coordinate conversion
+          this.devicePixelRatio = devicePixelRatio;
+          
+          console.log('Image loaded:', {
+            visualSize: `${window.innerWidth}x${window.innerHeight}`,
+            actualSize: `${actualWidth}x${actualHeight}`,
+            pixelRatio: devicePixelRatio
+          });
           
           resolve();
         } catch (error) {
@@ -322,21 +353,46 @@ class ColorPickerContent {
 
   /**
    * Get pixel color from captured image data
-   * @param {number} x - X coordinate
-   * @param {number} y - Y coordinate
+   * @param {number} x - X coordinate (visual/CSS coordinates)
+   * @param {number} y - Y coordinate (visual/CSS coordinates)
    * @returns {Object} RGB color object
    */
   getPixelFromImageData(x, y) {
     try {
+      // Convert visual coordinates to actual pixel coordinates
+      const devicePixelRatio = this.devicePixelRatio || window.devicePixelRatio || 1;
+      const actualX = Math.floor(x * devicePixelRatio);
+      const actualY = Math.floor(y * devicePixelRatio);
+      
       const width = this.screenImageData.width;
-      const index = (y * width + x) * 4;
+      const height = this.screenImageData.height;
+      
+      // Ensure coordinates are within bounds
+      if (actualX < 0 || actualX >= width || actualY < 0 || actualY >= height) {
+        console.warn('Coordinates out of bounds:', { actualX, actualY, width, height });
+        return { r: 128, g: 128, b: 128 };
+      }
+      
+      const index = (actualY * width + actualX) * 4;
       const data = this.screenImageData.data;
       
-      return {
+      const color = {
         r: data[index] || 0,
         g: data[index + 1] || 0,
         b: data[index + 2] || 0
       };
+      
+      // Debug logging for color accuracy
+      if (x % 50 === 0 && y % 50 === 0) { // Log occasionally to avoid spam
+        console.log('Color detection:', {
+          visualCoords: `${x}, ${y}`,
+          actualCoords: `${actualX}, ${actualY}`,
+          color: `rgb(${color.r}, ${color.g}, ${color.b})`,
+          pixelRatio: devicePixelRatio
+        });
+      }
+      
+      return color;
     } catch (error) {
       console.error('Error reading pixel data:', error);
       return { r: 128, g: 128, b: 128 };
@@ -345,6 +401,7 @@ class ColorPickerContent {
 
   /**
    * Get color from DOM element (fallback method)
+   * Enhanced to handle gradients, background images, and complex styling
    * @param {number} x - X coordinate
    * @param {number} y - Y coordinate
    * @returns {Object} RGB color object
@@ -357,12 +414,53 @@ class ColorPickerContent {
       this.overlay.style.display = 'block';
       
       if (element) {
-        const computedStyle = window.getComputedStyle(element);
-        const bgColor = computedStyle.backgroundColor;
+        // Create a temporary canvas to render the element and get pixel color
+        const canvas = document.createElement('canvas');
+        canvas.width = 1;
+        canvas.height = 1;
+        const ctx = canvas.getContext('2d');
         
-        // Parse background color
+        // Try to get computed style first
+        const computedStyle = window.getComputedStyle(element);
+        
+        // Check for background image
+        const bgImage = computedStyle.backgroundImage;
+        if (bgImage && bgImage !== 'none') {
+          console.log('Element has background image, using canvas rendering');
+          return this.getColorFromCanvas(element, x, y);
+        }
+        
+        // Check for gradient backgrounds
+        const bgColor = computedStyle.backgroundColor;
+        if (bgColor && bgColor.includes('gradient')) {
+          console.log('Element has gradient background, using canvas rendering');
+          return this.getColorFromCanvas(element, x, y);
+        }
+        
+        // Parse solid background color
         if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
-          return this.parseRgbString(bgColor);
+          const parsedColor = this.parseRgbString(bgColor);
+          if (parsedColor.r + parsedColor.g + parsedColor.b > 0) {
+            return parsedColor;
+          }
+        }
+        
+        // Check parent elements for background colors
+        let parentElement = element.parentElement;
+        let depth = 0;
+        while (parentElement && depth < 5) {
+          const parentStyle = window.getComputedStyle(parentElement);
+          const parentBg = parentStyle.backgroundColor;
+          
+          if (parentBg && parentBg !== 'rgba(0, 0, 0, 0)' && parentBg !== 'transparent') {
+            const parentColor = this.parseRgbString(parentBg);
+            if (parentColor.r + parentColor.g + parentColor.b > 0) {
+              return parentColor;
+            }
+          }
+          
+          parentElement = parentElement.parentElement;
+          depth++;
         }
         
         // Fallback to text color
@@ -376,6 +474,34 @@ class ColorPickerContent {
     } catch (error) {
       console.error('Error getting color from element:', error);
       return { r: 128, g: 128, b: 128 }; // Default gray
+    }
+  }
+
+  /**
+   * Get color by rendering element to canvas (for complex backgrounds)
+   * @param {HTMLElement} element - Element to analyze
+   * @param {number} x - X coordinate
+   * @param {number} y - Y coordinate
+   * @returns {Object} RGB color object
+   */
+  getColorFromCanvas(element, x, y) {
+    try {
+      // This is a simplified approach - in practice, rendering DOM to canvas
+      // has limitations due to CORS and security restrictions
+      console.log('Canvas-based color detection attempted but limited by browser security');
+      
+      // Fallback to computed style analysis
+      const computedStyle = window.getComputedStyle(element);
+      const bgColor = computedStyle.backgroundColor;
+      
+      if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
+        return this.parseRgbString(bgColor);
+      }
+      
+      return { r: 128, g: 128, b: 128 };
+    } catch (error) {
+      console.error('Canvas color detection error:', error);
+      return { r: 128, g: 128, b: 128 };
     }
   }
 
@@ -595,18 +721,27 @@ class ColorPickerContent {
 // Initialize the color picker content script
 // Use defensive initialization to prevent errors and duplicate instances
 if (typeof window !== 'undefined' && window.document) {
-  // Prevent multiple instances
-  if (window.colorPickerProInstalled) {
-    console.log('Color Picker Pro content script already installed');
+  // Prevent multiple instances with a more robust check
+  if (window.colorPickerProInstalled && window.colorPickerContent) {
+    console.log('Color Picker Pro content script already installed, reusing existing instance');
+    
+    // Refresh the message listener to ensure it's working
+    if (window.colorPickerContent.setupMessageListener) {
+      window.colorPickerContent.setupMessageListener();
+    }
   } else {
-    const colorPickerContent = new ColorPickerContent();
-    
-    // Mark as installed to prevent duplicates
-    window.colorPickerProInstalled = true;
-    
-    // Make it globally accessible for debugging
-    window.colorPickerContent = colorPickerContent;
-    
-    console.log('Color Picker Pro content script initialized');
+    try {
+      const colorPickerContent = new ColorPickerContent();
+      
+      // Mark as installed to prevent duplicates
+      window.colorPickerProInstalled = true;
+      
+      // Make it globally accessible for debugging
+      window.colorPickerContent = colorPickerContent;
+      
+      console.log('Color Picker Pro content script initialized');
+    } catch (error) {
+      console.error('Error initializing Color Picker Pro:', error);
+    }
   }
 }

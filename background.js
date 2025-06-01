@@ -57,23 +57,39 @@ async function handleColorPickingRequest(request, sender, sendResponse) {
 
     // First, try to inject the content script
     try {
-      await chrome.scripting.executeScript({
-        target: { tabId: tabId },
-        files: ['content.js']
+      console.log('Checking if content script injection is needed...');
+      
+      // Try to ping the content script first
+      const pingResponse = await new Promise((resolve) => {
+        chrome.tabs.sendMessage(tabId, { action: 'ping' }, (response) => {
+          resolve(response);
+        });
       });
-      console.log('Content script injected successfully');
+      
+      if (!pingResponse) {
+        console.log('Content script not found, injecting...');
+        await chrome.scripting.executeScript({
+          target: { tabId: tabId },
+          files: ['content.js']
+        });
+        console.log('Content script injected successfully');
+      } else {
+        console.log('Content script already present');
+      }
     } catch (injectionError) {
-      console.log('Content script injection failed (might already be injected):', injectionError.message);
+      console.log('Content script injection handling:', injectionError.message);
       
       // Check if it's a permission issue
       if (injectionError.message.includes('cannot be scripted') || 
-          injectionError.message.includes('Extension manifest')) {
+          injectionError.message.includes('Extension manifest') ||
+          injectionError.message.includes('chrome://') ||
+          injectionError.message.includes('chrome-extension://')) {
         sendResponse({ 
           error: `Cannot inject script into this page type (${tab.url.split('://')[0]}://). Try a regular website instead.` 
         });
         return;
       }
-      // This is ok for other cases, the script might already be injected
+      // For other errors, continue as the script might already be injected
     }
 
     // Wait a bit for the content script to initialize
@@ -111,21 +127,36 @@ async function handleColorPickingRequest(request, sender, sendResponse) {
 // Handle screen capture functionality
 async function handleScreenCapture(request, sender, sendResponse) {
   try {
+    console.log('Attempting screen capture for tab:', sender.tab.id);
+    
     // Capture the visible tab
     const dataUrl = await chrome.tabs.captureVisibleTab(
       sender.tab.windowId,
       { format: 'png', quality: 100 }
     );
     
+    console.log('Screen capture successful');
     sendResponse({ 
       success: true, 
       dataUrl: dataUrl 
     });
   } catch (error) {
     console.error('Screen capture failed:', error);
+    
+    let errorMessage = error.message;
+    
+    // Provide more specific error messages
+    if (error.message.includes('cannot be captured')) {
+      errorMessage = 'This page type cannot be captured for security reasons';
+    } else if (error.message.includes('Permission denied')) {
+      errorMessage = 'Permission denied for screen capture';
+    } else if (error.message.includes('tab')) {
+      errorMessage = 'Could not access the current tab';
+    }
+    
     sendResponse({ 
       success: false, 
-      error: error.message 
+      error: errorMessage
     });
   }
 }
