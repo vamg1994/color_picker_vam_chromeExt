@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Picker Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .color-strip {
+            height: 50px;
+            margin: 10px 0;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            color: white;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        
+        .red { background-color: #e74c3c; }
+        .blue { background-color: #3498db; }
+        .green { background-color: #2ecc71; }
+        .purple { background-color: #9b59b6; }
+        .orange { background-color: #f39c12; }
+        .pink { background-color: #e91e63; }
+        .cyan { background-color: #1abc9c; }
+        
+        .gradient-box {
+            height: 100px;
+            background: linear-gradient(90deg, 
+                #ff0000, #ff8000, #ffff00, #80ff00, 
+                #00ff00, #00ff80, #00ffff, #0080ff, 
+                #0000ff, #8000ff, #ff00ff, #ff0080);
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .instructions {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #007bff;
+            margin: 20px 0;
+        }
+        
+        .text-colors {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .text-color-box {
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .white-text { background: #2c3e50; color: #ffffff; }
+        .black-text { background: #ecf0f1; color: #2c3e50; }
+        .yellow-text { background: #34495e; color: #f1c40f; }
+        .lime-text { background: #8e44ad; color: #00ff00; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Color Picker Extension Test Page</h1>
+        
+        <div class="instructions">
+            <h3>📋 How to Test:</h3>
+            <ol>
+                <li>Click the Color Picker Pro extension icon in your browser toolbar</li>
+                <li>Click "Pick from Page" in the popup</li>
+                <li>Move your mouse over different colored areas below</li>
+                <li>Click to pick any color you like</li>
+                <li>Use ESC to cancel or Enter/Space to confirm</li>
+            </ol>
+        </div>
+        
+        <h2>🌈 Color Strips</h2>
+        <div class="color-strip red">Red Strip - #e74c3c</div>
+        <div class="color-strip blue">Blue Strip - #3498db</div>
+        <div class="color-strip green">Green Strip - #2ecc71</div>
+        <div class="color-strip purple">Purple Strip - #9b59b6</div>
+        <div class="color-strip orange">Orange Strip - #f39c12</div>
+        <div class="color-strip pink">Pink Strip - #e91e63</div>
+        <div class="color-strip cyan">Cyan Strip - #1abc9c</div>
+        
+        <h2>🌈 Rainbow Gradient</h2>
+        <div class="gradient-box"></div>
+        
+        <h2>📝 Text Colors</h2>
+        <div class="text-colors">
+            <div class="text-color-box white-text">White Text on Dark</div>
+            <div class="text-color-box black-text">Black Text on Light</div>
+            <div class="text-color-box yellow-text">Yellow Text</div>
+            <div class="text-color-box lime-text">Lime Green Text</div>
+        </div>
+        
+        <div class="instructions">
+            <h3>✅ Expected Behavior:</h3>
+            <ul>
+                <li><strong>Crosshair cursor</strong> should appear when hovering</li>
+                <li><strong>Color preview panel</strong> showing hex, RGB values and position</li>
+                <li><strong>Magnifier tool</strong> showing pixel-level detail</li>
+                <li><strong>Instructions overlay</strong> at the bottom of the screen</li>
+                <li><strong>Click</strong> should pick the color and close the picker</li>
+                <li><strong>ESC key</strong> should cancel the color picking</li>
+            </ul>
+        </div>
+        
+        <div class="instructions">
+            <h3>🐛 Troubleshooting:</h3>
+            <p>If the color picker doesn't work:</p>
+            <ul>
+                <li>Check the browser console (F12) for error messages</li>
+                <li>Make sure the extension has permission to access this page</li>
+                <li>Try refreshing the page and testing again</li>
+                <li>Check that the extension is enabled in chrome://extensions/</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html> 

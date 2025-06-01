@@ -1,0 +1,171 @@
+/* Content script styles for color picker overlay */
+
+.color-picker-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 2147483647 !important;
+  cursor: crosshair !important;
+  background: transparent !important;
+  pointer-events: auto !important;
+  user-select: none !important;
+}
+
+.color-picker-crosshair {
+  position: absolute !important;
+  width: 20px !important;
+  height: 20px !important;
+  pointer-events: none !important;
+  z-index: 2147483648 !important;
+  transform: translate(-50%, -50%) !important;
+}
+
+.color-picker-crosshair::before,
+.color-picker-crosshair::after {
+  content: '' !important;
+  position: absolute !important;
+  background: #fff !important;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.8) !important;
+}
+
+.color-picker-crosshair::before {
+  width: 2px !important;
+  height: 20px !important;
+  left: 50% !important;
+  top: 0 !important;
+  transform: translateX(-50%) !important;
+}
+
+.color-picker-crosshair::after {
+  width: 20px !important;
+  height: 2px !important;
+  left: 0 !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+}
+
+.color-picker-preview {
+  position: absolute !important;
+  background: rgba(0, 0, 0, 0.9) !important;
+  color: white !important;
+  padding: 8px 12px !important;
+  border-radius: 8px !important;
+  font-family: 'Consolas', 'Monaco', monospace !important;
+  font-size: 12px !important;
+  pointer-events: none !important;
+  z-index: 2147483648 !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+.preview-color {
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 4px !important;
+  border: 2px solid rgba(255, 255, 255, 0.3) !important;
+  flex-shrink: 0 !important;
+}
+
+.preview-text {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+}
+
+.preview-hex,
+.preview-rgb,
+.preview-position {
+  font-weight: 600 !important;
+  letter-spacing: 0.5px !important;
+}
+
+.preview-hex {
+  font-size: 13px !important;
+  color: #fff !important;
+}
+
+.preview-rgb {
+  font-size: 11px !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.preview-position {
+  font-size: 10px !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.color-picker-magnifier {
+  position: absolute !important;
+  background: rgba(0, 0, 0, 0.9) !important;
+  padding: 8px !important;
+  border-radius: 8px !important;
+  pointer-events: none !important;
+  z-index: 2147483648 !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+.color-picker-magnifier canvas {
+  display: block !important;
+  border-radius: 4px !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  image-rendering: pixelated !important;
+  image-rendering: -moz-crisp-edges !important;
+  image-rendering: crisp-edges !important;
+}
+
+/* Instructions overlay */
+.color-picker-instructions {
+  position: fixed !important;
+  bottom: 20px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  background: rgba(0, 0, 0, 0.9) !important;
+  color: white !important;
+  padding: 12px 20px !important;
+  border-radius: 20px !important;
+  font-family: 'Segoe UI', sans-serif !important;
+  font-size: 13px !important;
+  pointer-events: none !important;
+  z-index: 2147483648 !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+.instructions-content {
+  text-align: center !important;
+}
+
+.instructions-content p {
+  margin: 0 !important;
+  padding: 2px 0 !important;
+  line-height: 1.4 !important;
+}
+
+.instructions-content strong {
+  color: #4CAF50 !important;
+  font-weight: bold !important;
+}
+
+/* Hide scrollbars during picking */
+.color-picker-overlay ~ body {
+  overflow: hidden !important;
+}
+
+/* Ensure overlay is always on top */
+.color-picker-overlay,
+.color-picker-crosshair,
+.color-picker-preview,
+.color-picker-magnifier,
+.color-picker-instructions {
+  -webkit-transform: translateZ(0) !important;
+  transform: translateZ(0) !important;
+}
